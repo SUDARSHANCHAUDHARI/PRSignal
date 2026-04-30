@@ -1,0 +1,14 @@
+services:
+  prsignal:
+    build: .
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    volumes:
+      - prsignal-data:/app/data
+    environment:
+      DATABASE_URL: /app/data/prsignal.db
+
+volumes:
+  prsignal-data:

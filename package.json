@@ -1,0 +1,20 @@
+{
+  "name": "prsignal-hybrid-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hybrid PR review enforcement MVP: GitHub webhook + Slack app + Chrome extension overlay.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --filter @prsignal/api dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test:webhook": "pnpm --filter @prsignal/api test:webhook"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

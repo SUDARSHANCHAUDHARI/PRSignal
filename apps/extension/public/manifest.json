@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "PRSignal Review Overlay",
+  "version": "1.0.0",
+  "description": "Shows active PR review requests as an overlay so they are not missed.",
+  "permissions": ["storage", "tabs", "notifications", "alarms"],
+  "host_permissions": ["http://localhost:4000/*", "https://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PRSignal"
+  }
+}
