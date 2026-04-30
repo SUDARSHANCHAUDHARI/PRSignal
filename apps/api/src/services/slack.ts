@@ -15,11 +15,11 @@ export async function sendReviewDm(input: {
   prNumber: number;
   authorGithub: string;
   assignedAt?: string;
-}) {
+}): Promise<boolean> {
   const user = getUserByGithub(input.reviewerGithub);
   if (!user?.slack_user_id) {
     console.warn(`[slack] No slack user mapping for GitHub user ${input.reviewerGithub}`);
-    return;
+    return false;
   }
 
   const waitingMinutes = getWaitingMinutes(input.assignedAt);
@@ -60,8 +60,10 @@ export async function sendReviewDm(input: {
     });
     if (result.ts) setSlackTs(input.assignmentId, result.ts);
     touchAssignmentNotified(input.assignmentId);
+    return true;
   } catch (err) {
     console.warn(`[slack] DM failed for ${input.reviewerGithub}:`, err instanceof Error ? err.message : err);
+    return false;
   }
 }
 
@@ -97,6 +99,6 @@ export async function sendReviewReminderDm(input: {
   authorGithub: string;
   assignedAt?: string;
   reminderCount?: number;
-}) {
-  await sendReviewDm(input);
+}): Promise<boolean> {
+  return sendReviewDm(input);
 }

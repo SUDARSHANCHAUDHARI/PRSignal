@@ -16,7 +16,7 @@ export function startReminderWorker() {
     for (const item of due) {
       const waitingMinutes = getWaitingMinutes(item.assigned_at);
 
-      await sendReviewReminderDm({
+      const sent = await sendReviewReminderDm({
         assignmentId: item.assignment_id,
         reviewerGithub: item.reviewer_github,
         prTitle: item.title,
@@ -28,7 +28,7 @@ export function startReminderWorker() {
         reminderCount: item.reminder_count
       });
 
-      touchAssignmentReminded(item.assignment_id);
+      if (sent) touchAssignmentReminded(item.assignment_id);
 
       if (waitingMinutes >= config.ESCALATION_MINUTES) {
         await postEscalation({
