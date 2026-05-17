@@ -36,3 +36,6 @@ dist/
 .claude/settings.json
 .claude/settings.local.json
 .claude-plugin-config.json
+
+# graphify knowledge graph
+graphify-out/
