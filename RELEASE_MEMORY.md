@@ -42,3 +42,4 @@ Run package checks and webhook test locally.
 
 - Updated `.env.example` and README setup/webhook examples to use `YOUR_*` placeholders for Slack, GitHub, JWT, domain, tunnel, and team-channel values.
 - Current release type remains POC/internal demo until dependencies, webhook test, Slack setup, storage hardening, and extension/API auth are verified.
+- Polished README with POC/internal status, technical decisions, setup, verification, known limits, and production blockers.

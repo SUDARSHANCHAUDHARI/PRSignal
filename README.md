@@ -1,57 +1,51 @@
-# PRSignal Hybrid MVP
+# PRSignal
 
-PRSignal is a hybrid PR review enforcement system.
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](package.json)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933.svg)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9-F69220.svg)](https://pnpm.io/)
+[![Release](https://img.shields.io/badge/release-POC%20internal%20demo-orange.svg)](RELEASE_MEMORY.md)
 
-It combines:
+Hybrid PR review enforcement MVP: GitHub webhook receiver, Slack DM workflow, and Chrome extension overlay for reviewer reminders.
 
-1. GitHub webhook receiver
-2. Slack DM notification with buttons
-3. Chrome extension full-page overlay
-4. SQLite database
-5. Reviewer mapping between GitHub, Slack, and extension token
+> **Status:** POC/internal demo · not production-ready until Slack/GitHub webhook setup, persistent storage, and extension/API auth are hardened
 
-The goal is simple: when someone is added as a PR reviewer, they should not miss it.
+## Why This Exists
 
-## Architecture
+Pull request review requests are easy to miss across GitHub, Slack, and browser tabs. PRSignal explores a stricter workflow: when someone becomes a reviewer, the backend records it, Slack nudges them, and a Chrome extension can surface the pending review in-browser.
 
-```txt
-GitHub Pull Request Event
-        ↓
-PRSignal API
-        ↓
-SQLite DB
-        ↓
-Slack DM + Chrome Extension Overlay
-```
+## Status
 
-## What is included
+| Item | State |
+|---|---|
+| Release type | POC/internal demo |
+| Backend | Express workspace app |
+| Extension | Chrome Manifest V3 |
+| Storage | SQLite MVP |
+| Production | Pending hardening |
 
-```txt
-apps/api        Node.js Express backend
-apps/extension  Chrome extension Manifest V3
-prompts         Claude/Codex build prompts
-.env.example    Environment variables
-```
+## Key Technical Decisions
 
-## Requirements
+**GitHub webhooks are the source of truth.** Reviewer events should come from GitHub instead of polling PR pages.
 
-- Node.js 20+
-- pnpm 9+
-- Slack workspace admin access for app installation
-- GitHub repo admin access for webhook setup
-- Chrome or Chromium browser
+**Slack is used for immediate human notification.** PR review reminders need to land where teams already respond.
+
+**The Chrome extension is a second surface, not the backend.** The extension displays review state, but the backend owns webhook validation, persistence, and reviewer mapping.
+
+**SQLite is acceptable for the MVP only.** Production should use persistent disk guarantees or Postgres before multi-instance deployment.
+
+## Features
+
+- GitHub pull request webhook receiver
+- Slack DM notifications and interaction endpoint
+- Chrome extension overlay concept
+- reviewer mapping between GitHub and Slack
+- snooze/escalation timing configuration
+- local health endpoint
 
 ## Setup
 
-### 1. Install dependencies
-
 ```bash
 pnpm install
-```
-
-### 2. Create env file
-
-```bash
 cp .env.example .env
 ```
 
@@ -65,314 +59,46 @@ JWT_SECRET=YOUR_JWT_SECRET
 TEAM_CHANNEL_ID=YOUR_TEAM_CHANNEL_ID
 ```
 
-### 3. Run backend
+Run:
 
 ```bash
 pnpm dev
 ```
 
-Open:
+Health check:
 
 ```txt
 http://localhost:4000/health
 ```
 
-You should see:
+## Deployment
 
-```json
-{ "ok": true, "service": "prsignal-api" }
-```
+Release scope: internal demo only.
 
-## Slack App setup
+Before production:
 
-Create a Slack app at Slack API dashboard.
+- configure real GitHub webhook delivery
+- configure Slack app scopes and signing secret
+- replace or harden SQLite storage
+- harden extension/API token lifecycle
+- run webhook-to-Slack-to-extension end-to-end test
 
-### Bot token scopes
-
-Add these bot scopes:
-
-```txt
-chat:write
-im:write
-users:read
-```
-
-Install app to workspace.
-
-Copy:
-
-```txt
-Bot User OAuth Token → SLACK_BOT_TOKEN
-Signing Secret → SLACK_SIGNING_SECRET
-```
-
-### Interactivity endpoint
-
-Set Slack Interactivity Request URL:
-
-```txt
-https://YOUR_DOMAIN/slack/interactions
-```
-
-For local testing, use ngrok:
+## Verification
 
 ```bash
-ngrok http 4000
-```
-
-Then set:
-
-```env
-PUBLIC_APP_URL=https://YOUR_TUNNEL_DOMAIN
-```
-
-## GitHub webhook setup
-
-In your GitHub repo:
-
-```txt
-Settings → Webhooks → Add webhook
-```
-
-Payload URL:
-
-```txt
-https://YOUR_DOMAIN/github/webhook
-```
-
-Content type:
-
-```txt
-application/json
-```
-
-Secret:
-
-```txt
-same value as GITHUB_WEBHOOK_SECRET
-```
-
-Events:
-
-```txt
-Pull requests
-```
-
-The MVP listens for:
-
-```txt
-pull_request.review_requested
-pull_request.closed
-```
-
-## User mapping
-
-Before Slack can DM a reviewer, PRSignal must know which GitHub username maps to which Slack user ID.
-
-Create user mapping:
-
-```bash
-curl -X POST http://localhost:4000/admin/users \
-  -H "content-type: application/json" \
-  -d '{"githubUsername":"YOUR_GITHUB_USERNAME","slackUserId":"YOUR_SLACK_USER_ID","displayName":"Your Name"}'
-```
-
-Response includes:
-
-```json
-{
-  "extensionToken": "..."
-}
-```
-
-Use this token in Chrome extension popup.
-
-## How to find Slack user ID
-
-In Slack:
-
-1. Open profile
-2. Click three dots
-3. Copy member ID
-
-It looks like:
-
-```txt
-U012ABCDEF
-```
-
-## Chrome extension setup
-
-Build extension:
-
-```bash
-pnpm --filter @prsignal/extension build
-```
-
-Load it:
-
-```txt
-Chrome → Extensions → Developer mode → Load unpacked → apps/extension/dist
-```
-
-Click PRSignal extension icon.
-
-Add:
-
-```txt
-Backend URL: http://localhost:4000
-Extension Token: token from /admin/users
-```
-
-Save.
-
-## Test with fake webhook
-
-Edit `apps/api/src/scripts/sendTestWebhook.ts` and replace:
-
-```txt
-YOUR_GITHUB_USERNAME
-```
-
-with your GitHub username.
-
-Then run:
-
-```bash
+pnpm build
+pnpm typecheck
+pnpm lint
 pnpm test:webhook
 ```
 
-Expected result:
+## Known Limits
 
-1. DB creates PR
-2. DB creates review assignment
-3. Slack DM is sent if Slack user mapping exists
-4. Chrome extension overlay appears after polling
+- SQLite is not ideal for multi-instance production.
+- Extension tokens must be hardened before public use.
+- Slack/GitHub setup is operationally sensitive.
+- End-to-end webhook smoke is still required.
 
-## API endpoints
+## Author
 
-### Health
-
-```txt
-GET /health
-```
-
-### Admin
-
-```txt
-POST /admin/users
-GET /admin/users
-```
-
-### GitHub
-
-```txt
-POST /github/webhook
-```
-
-### Slack
-
-```txt
-POST /slack/interactions
-```
-
-### Extension
-
-```txt
-GET /extension/me
-GET /extension/prs
-POST /extension/assignments/:id/ack
-POST /extension/assignments/:id/snooze
-POST /extension/assignments/:id/complete
-```
-
-All extension endpoints require:
-
-```txt
-Authorization: Bearer EXTENSION_TOKEN
-```
-
-## Production deployment
-
-Recommended first deployment:
-
-- Railway
-- Render
-- Fly.io
-
-Set environment variables in hosting dashboard.
-
-Use persistent disk or Postgres for production. SQLite is okay for MVP and internal testing, but not best for multi-instance production.
-
-## MVP limitations
-
-This is intentionally simple.
-
-Current MVP does not include:
-
-- GitHub App OAuth installation
-- Automatic GitHub to Slack identity lookup
-- Team dashboard
-- Reassign flow
-- AI PR summaries
-- Enterprise SSO
-
-Those are next steps after MVP validation.
-
-## Best product behavior
-
-Do not make the overlay too aggressive from day one.
-
-Good rules:
-
-- Show overlay only for active pending reviews
-- Respect snooze
-- Allow acknowledge
-- Allow mark done
-- Do not block after completed PR
-
-## Suggested next version
-
-1. GitHub App instead of webhook secret per repo
-2. Slack OAuth onboarding
-3. Reviewer SLA settings
-4. Team dashboard
-5. Escalation rules
-6. AI PR summary
-7. VS Code extension
-
-## Tone-based notification system
-
-This version includes a message engine in `apps/api/src/services/messageTemplates.ts`.
-
-PRSignal changes tone based on how long a review has been waiting:
-
-| Waiting time | Tone | Example feeling |
-|---|---|---|
-| 0–30 min | clean | normal review request |
-| 30–90 min | friendly | gentle nudge |
-| 90–180 min | epic | `The stars have aligned...` |
-| 180–360 min | dramatic | `I am but a hollow shell...` |
-| 360+ min | direct | blocked / escalation tone |
-
-Slack DMs use the same message engine as the Chrome extension overlay, so the product feels consistent across channels.
-
-### Files added or updated
-
-```txt
-apps/api/src/services/messageTemplates.ts
-apps/api/src/services/slack.ts
-apps/api/src/routes/extension.ts
-apps/extension/src/content.ts
-apps/extension/src/content.css
-```
-
-### How to customize tone
-
-Edit `getSlackIntro`, `getSlackBody`, and `getOverlayCopy` inside:
-
-```txt
-apps/api/src/services/messageTemplates.ts
-```
-
-You can safely change the copy without touching Slack API logic or extension logic.
+Built by **Sudarshan Chaudhari** — SudarshanTechLabs.
