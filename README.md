@@ -58,11 +58,11 @@ cp .env.example .env
 Fill in:
 
 ```env
-GITHUB_WEBHOOK_SECRET=your-secret
-SLACK_BOT_TOKEN=xoxb-your-token
-SLACK_SIGNING_SECRET=your-signing-secret
-JWT_SECRET=make-this-long-and-random
-TEAM_CHANNEL_ID=optional-channel-id
+GITHUB_WEBHOOK_SECRET=YOUR_GITHUB_WEBHOOK_SECRET
+SLACK_BOT_TOKEN=YOUR_SLACK_BOT_TOKEN
+SLACK_SIGNING_SECRET=YOUR_SLACK_SIGNING_SECRET
+JWT_SECRET=YOUR_JWT_SECRET
+TEAM_CHANNEL_ID=YOUR_TEAM_CHANNEL_ID
 ```
 
 ### 3. Run backend
@@ -111,7 +111,7 @@ Signing Secret → SLACK_SIGNING_SECRET
 Set Slack Interactivity Request URL:
 
 ```txt
-https://your-public-backend-url/slack/interactions
+https://YOUR_DOMAIN/slack/interactions
 ```
 
 For local testing, use ngrok:
@@ -123,7 +123,7 @@ ngrok http 4000
 Then set:
 
 ```env
-PUBLIC_APP_URL=https://your-ngrok-url
+PUBLIC_APP_URL=https://YOUR_TUNNEL_DOMAIN
 ```
 
 ## GitHub webhook setup
@@ -137,7 +137,7 @@ Settings → Webhooks → Add webhook
 Payload URL:
 
 ```txt
-https://your-public-backend-url/github/webhook
+https://YOUR_DOMAIN/github/webhook
 ```
 
 Content type:
@@ -231,7 +231,7 @@ Save.
 Edit `apps/api/src/scripts/sendTestWebhook.ts` and replace:
 
 ```txt
-your-github-username
+YOUR_GITHUB_USERNAME
 ```
 
 with your GitHub username.
