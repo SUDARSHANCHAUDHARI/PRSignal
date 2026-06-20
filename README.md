@@ -80,13 +80,15 @@ http://localhost:4000/health
 
 Release scope: internal demo only.
 
+Single-instance deployment persists SQLite to a Docker volume (see `docker-compose.yml`).
+
 Before production:
 
 - configure real GitHub webhook delivery
 - configure Slack app scopes and signing secret
-- replace or harden SQLite storage
-- harden extension/API token lifecycle
-- run webhook-to-Slack-to-extension end-to-end test
+- set a strong `JWT_SECRET` and `ADMIN_API_TOKEN` (enforced at startup when `NODE_ENV=production`)
+- move to Postgres only if you need to run multiple instances behind a load balancer
+- run the end-to-end smoke test below
 
 ## Verification
 
@@ -98,11 +100,23 @@ pnpm test
 pnpm test:webhook
 ```
 
+## End-to-End Smoke Test (manual)
+
+Requires live credentials and a public tunnel — cannot run from CI.
+
+1. Start the API (`pnpm dev`) and expose it: `ngrok http 4000` (or cloudflared).
+2. In the GitHub repo settings, add a webhook → `https://<tunnel>/github/webhook`, content type `application/json`, secret = `GITHUB_WEBHOOK_SECRET`, events = *Pull requests*.
+3. In the Slack app: set the interactivity request URL to `https://<tunnel>/slack/interactions`, install the app, copy the bot token + signing secret into `.env`.
+4. Register a reviewer: `POST /admin/users` with `Authorization: Bearer $ADMIN_API_TOKEN` and `{ "githubUsername": "...", "slackUserId": "..." }`. Save the returned `extensionToken`.
+5. Configure the extension popup with the API URL and that token.
+6. Open a PR and request the registered reviewer.
+7. **Verify:** GitHub delivery returns `200`; the reviewer gets a Slack DM; the extension overlay shows the pending review; the DM buttons (ack/snooze) update state.
+
 ## Known Limits
 
-- SQLite is not ideal for multi-instance production.
-- Extension tokens must be hardened before public use.
+- SQLite is single-instance only; multiple instances need Postgres.
 - Slack/GitHub setup is operationally sensitive.
+- The end-to-end flow still needs a live smoke test before trusting it in production.
 - End-to-end webhook smoke is still required.
 
 ## Author
