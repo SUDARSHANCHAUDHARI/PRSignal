@@ -3,11 +3,11 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](package.json)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933.svg)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9-F69220.svg)](https://pnpm.io/)
-[![Release](https://img.shields.io/badge/release-POC%20internal%20demo-orange.svg)](RELEASE_MEMORY.md)
+[![Status](https://img.shields.io/badge/status-single--instance%20ready-green.svg)](RELEASE_MEMORY.md)
 
-Hybrid PR review enforcement MVP: GitHub webhook receiver, Slack DM workflow, and Chrome extension overlay for reviewer reminders.
+Hybrid PR review enforcement: GitHub webhook receiver, Slack DM workflow, and Chrome extension overlay for reviewer reminders.
 
-> **Status:** POC/internal demo · not production-ready until Slack/GitHub webhook setup, persistent storage, and extension/API auth are hardened
+> **Status:** Hardened for single-instance production — HMAC signature verification (GitHub + Slack), bearer-auth on `/admin` and `/extension`, rate limiting, and Zod config guards that refuse insecure defaults when `NODE_ENV=production`. Remaining steps before trusting it live: supply real GitHub/Slack credentials, run the one-time end-to-end smoke test, and move to Postgres only if you need multiple instances.
 
 ## Why This Exists
 
@@ -17,11 +17,12 @@ Pull request review requests are easy to miss across GitHub, Slack, and browser 
 
 | Item | State |
 |---|---|
-| Release type | POC/internal demo |
+| Release type | Single-instance production-ready |
 | Backend | Express workspace app |
 | Extension | Chrome Manifest V3 |
-| Storage | SQLite MVP |
-| Production | Pending hardening |
+| Storage | SQLite (single-instance); Postgres for multi-instance |
+| Security | Signature verification, bearer auth, rate limiting, prod config guards |
+| Remaining | Live end-to-end smoke test with real GitHub/Slack credentials |
 
 ## Key Technical Decisions
 
@@ -78,11 +79,9 @@ http://localhost:4000/health
 
 ## Deployment
 
-Release scope: internal demo only.
-
 Single-instance deployment persists SQLite to a Docker volume (see `docker-compose.yml`).
 
-Before production:
+Before going live:
 
 - configure real GitHub webhook delivery
 - configure Slack app scopes and signing secret
