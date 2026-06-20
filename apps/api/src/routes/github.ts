@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { verifyGitHubSignature } from '../utils/crypto.js';
 import { createOrKeepAssignment, markPrClosed, upsertPullRequest } from '../services/prs.js';
 import { sendReviewDm } from '../services/slack.js';
+import { extractRequestedReviewers } from '../services/githubEvents.js';
 
 export const githubRouter = Router();
 
@@ -37,9 +38,7 @@ githubRouter.post('/webhook', async (req: any, res) => {
       state: pr.state
     });
 
-    const reviewers = new Set<string>();
-    if (payload.requested_reviewer?.login) reviewers.add(payload.requested_reviewer.login);
-    for (const reviewer of pr.requested_reviewers ?? []) reviewers.add(reviewer.login);
+    const reviewers = extractRequestedReviewers(payload);
 
     const assignments = [];
     for (const reviewerGithub of reviewers) {
