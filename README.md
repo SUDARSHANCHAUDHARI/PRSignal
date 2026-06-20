@@ -56,8 +56,13 @@ GITHUB_WEBHOOK_SECRET=YOUR_GITHUB_WEBHOOK_SECRET
 SLACK_BOT_TOKEN=YOUR_SLACK_BOT_TOKEN
 SLACK_SIGNING_SECRET=YOUR_SLACK_SIGNING_SECRET
 JWT_SECRET=YOUR_JWT_SECRET
+ADMIN_API_TOKEN=YOUR_ADMIN_API_TOKEN
 TEAM_CHANNEL_ID=YOUR_TEAM_CHANNEL_ID
 ```
+
+In production (`NODE_ENV=production`) the server refuses to start unless `JWT_SECRET`
+is a strong non-default value (>=32 chars) and `ADMIN_API_TOKEN` is set. The `/admin`
+endpoints require `Authorization: Bearer $ADMIN_API_TOKEN`.
 
 Run:
 
@@ -89,6 +94,7 @@ Before production:
 pnpm build
 pnpm typecheck
 pnpm lint
+pnpm test
 pnpm test:webhook
 ```
 
