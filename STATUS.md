@@ -90,3 +90,35 @@ Not yet deployed. `docker-compose.yml` is ready for single-instance hosts.
 ### Not done
 - [ ] Live end-to-end smoke against real GitHub webhook + Slack workspace (needs GitHub webhook secret + Slack bot token)
 - [ ] Migrate SQLite → Postgres if multi-instance deployment is needed
+
+## Categorized work remaining
+
+| Item | Effort | Bucket | Blocker | Priority |
+|------|--------|--------|---------|----------|
+| Migrate SQLite → Postgres | ~1d | 🟦 Pure code | (optional — only if multi-instance) | P3 |
+| Live e2e smoke test | ~1h | 🔑 Needs creds | GitHub webhook secret + Slack bot token + container host | P1 |
+| Deploy to container host | ~1h | 🔑 Needs creds | hosting access (Railway/Fly/your VPS) | P1 |
+
+## Release plan
+
+1. **Live smoke (creds-gated):**
+   - Generate GitHub webhook secret: `openssl rand -hex 32`
+   - Create Slack app at https://api.slack.com/apps with `chat:write` scope, install to workspace, copy bot token + signing secret
+   - Generate `JWT_SECRET` (≥32 chars) + `ADMIN_API_TOKEN` (≥16 chars)
+   - Fill `.env` from `.env.example`
+   - Run `pnpm dev`, expose with `ngrok http 4000`, register the webhook + Slack interactivity URL
+   - Open a test PR, request a reviewer who's registered via `/admin/users` → verify Slack DM lands
+2. **Deploy:**
+   - On Railway/Fly/your VPS: build the Docker image from `Dockerfile`, mount a volume for the SQLite file, set the env vars above
+   - Confirm `/health` returns `{ok: true}`
+3. **Tag release:** `gh release create v1.0.0 --title "PRSignal v1.0.0 — single-instance production-ready"`
+
+### Deploy prerequisites
+- `GITHUB_WEBHOOK_SECRET` — generated locally
+- `SLACK_BOT_TOKEN` — from Slack app (`xoxb-…`)
+- `SLACK_SIGNING_SECRET` — from Slack app Basic Information page
+- `JWT_SECRET` — ≥32 chars (`openssl rand -hex 32`)
+- `ADMIN_API_TOKEN` — ≥16 chars
+- `PUBLIC_APP_URL` — your live URL
+- `TEAM_CHANNEL_ID` — Slack channel ID for escalations
+- Container host with persistent disk (for SQLite WAL file)
