@@ -8,6 +8,8 @@ import { extensionRouter } from './routes/extension.js';
 import { githubRouter } from './routes/github.js';
 import { slackRouter } from './routes/slack.js';
 import { startReminderWorker } from './services/reminders.js';
+import { startDailyDigestWorker } from './services/dailyDigestWorker.js';
+import { startRepositorySyncWorker } from './services/repositorySyncWorker.js';
 import { rateLimit } from './utils/rateLimit.js';
 
 const app = express();
@@ -72,4 +74,6 @@ app.use('/slack', slackRouter);
 app.listen(config.PORT, () => {
   console.log(`PRSignal API running on ${config.PUBLIC_APP_URL}`);
   startReminderWorker();
+  startDailyDigestWorker();
+  startRepositorySyncWorker();
 });

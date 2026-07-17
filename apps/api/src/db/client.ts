@@ -19,7 +19,10 @@ db.exec(schema);
 for (const statement of [
   "ALTER TABLE review_assignments ADD COLUMN last_notified_at TEXT",
   "ALTER TABLE review_assignments ADD COLUMN last_reminded_at TEXT",
-  "ALTER TABLE review_assignments ADD COLUMN reminder_count INTEGER NOT NULL DEFAULT 0"
+  "ALTER TABLE review_assignments ADD COLUMN reminder_count INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE pull_requests ADD COLUMN is_draft INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE pull_requests ADD COLUMN requested_reviewers_json TEXT NOT NULL DEFAULT '[]'",
+  "ALTER TABLE pull_requests ADD COLUMN merged_at TEXT"
 ]) {
   try {
     db.exec(statement);

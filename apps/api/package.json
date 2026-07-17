@@ -10,7 +10,7 @@
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/utils/crypto.test.ts src/utils/auth.test.ts src/services/githubEvents.test.ts",
+    "test": "node --import tsx --test src/utils/*.test.ts src/services/*.test.ts",
     "test:webhook": "tsx src/scripts/sendTestWebhook.ts"
   },
   "dependencies": {

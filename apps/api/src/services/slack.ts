@@ -3,6 +3,9 @@ import { config } from '../config.js';
 import { setSlackTs, touchAssignmentNotified } from './prs.js';
 import { getUserByGithub } from './users.js';
 import { getMessageTone, getSlackBody, getSlackIntro, getWaitingMinutes } from './messageTemplates.js';
+import type { DailyDigestMessage } from './dailyDigest.js';
+import type { ChannelNotification } from '../types/models.js';
+import type { ChannelPostResult, PrChannelInput } from './prChannelFeed.js';
 
 export const slack = new WebClient(config.SLACK_BOT_TOKEN);
 
@@ -101,4 +104,119 @@ export async function sendReviewReminderDm(input: {
   reminderCount?: number;
 }): Promise<boolean> {
   return sendReviewDm(input);
+}
+
+export async function postDailyDigest(channelId: string, message: DailyDigestMessage): Promise<boolean> {
+  const batchSize = 45;
+  const batches: string[][] = [];
+  for (let index = 0; index < message.sections.length; index += batchSize) {
+    batches.push(message.sections.slice(index, index + batchSize));
+  }
+
+  try {
+    for (const [index, sections] of batches.entries()) {
+      const part = batches.length > 1 ? ` (part ${index + 1}/${batches.length})` : '';
+      const result = await slack.chat.postMessage({
+        channel: channelId,
+        text: `${message.fallbackText}${part}`,
+        blocks: sections.map((section) => ({
+          type: 'section' as const,
+          text: { type: 'mrkdwn' as const, text: section }
+        }))
+      });
+      if (!result.ok) return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[slack] Daily digest failed:', err instanceof Error ? err.message : err);
+    return false;
+  }
+}
+
+function escapeSlackText(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
+
+function prStatusLabel(pullRequest: PrChannelInput): string {
+  switch (pullRequest.state) {
+    case 'merged': return 'Merged';
+    case 'closed': return 'Closed';
+    case 'draft': return 'Draft';
+    case 'open': return pullRequest.isDraft ? 'Draft' : 'Open';
+  }
+}
+
+function buildPrChannelMessage(pullRequest: PrChannelInput) {
+  const status = prStatusLabel(pullRequest);
+  const headline = pullRequest.state === 'open'
+    ? 'New pull request ready for review'
+    : pullRequest.state === 'draft'
+      ? 'Draft pull request'
+      : `Pull request ${status.toLocaleLowerCase('en-US')}`;
+  const reviewers = pullRequest.requestedReviewers.length > 0
+    ? pullRequest.requestedReviewers.map((reviewer) => `@${escapeSlackText(reviewer)}`).join(', ')
+    : 'Not requested';
+  const title = escapeSlackText(pullRequest.title);
+  const repository = escapeSlackText(pullRequest.repoFullName);
+  const author = escapeSlackText(pullRequest.authorGithub);
+  return {
+    text: `${headline}: ${pullRequest.repoFullName} #${pullRequest.prNumber} ${pullRequest.title} — ${status}`,
+    blocks: [
+      {
+        type: 'section' as const,
+        text: { type: 'mrkdwn' as const, text: `*${headline}*` }
+      },
+      {
+        type: 'section' as const,
+        text: {
+          type: 'mrkdwn' as const,
+          text: `*Repository:* \`${repository}\`\n*PR:* <${pullRequest.url}|#${pullRequest.prNumber} ${title}>\n*Author:* @${author}\n*Reviewers:* ${reviewers}\n*Status:* ${status}`
+        }
+      },
+      {
+        type: 'actions' as const,
+        elements: [
+          {
+            type: 'button' as const,
+            text: { type: 'plain_text' as const, text: 'Open pull request' },
+            style: 'primary' as const,
+            url: pullRequest.url,
+            action_id: 'open_pr_channel_feed'
+          }
+        ]
+      }
+    ]
+  };
+}
+
+export async function postPrChannelNotification(
+  channelId: string,
+  pullRequest: PrChannelInput
+): Promise<ChannelPostResult> {
+  const message = buildPrChannelMessage(pullRequest);
+  try {
+    const result = await slack.chat.postMessage({ channel: channelId, ...message });
+    return { ok: Boolean(result.ok && result.ts), ts: result.ts };
+  } catch (error) {
+    console.warn('[slack] PR channel notification failed:', error instanceof Error ? error.message : error);
+    return { ok: false };
+  }
+}
+
+export async function updatePrChannelNotification(
+  notification: ChannelNotification,
+  pullRequest: PrChannelInput
+): Promise<boolean> {
+  const message = buildPrChannelMessage(pullRequest);
+  try {
+    const result = await slack.chat.update({
+      channel: notification.slack_channel_id,
+      ts: notification.slack_root_ts,
+      ...message
+    });
+    return Boolean(result.ok);
+  } catch (error) {
+    console.warn('[slack] PR channel update failed:', error instanceof Error ? error.message : error);
+    return false;
+  }
 }

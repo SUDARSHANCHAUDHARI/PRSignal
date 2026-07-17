@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { db } from '../db/client.js';
 import { PullRequest, ReviewAssignment } from '../types/models.js';
+import { normalizeRepositoryFullName } from './repositoryWatchRules.js';
 
 export function upsertPullRequest(input: {
   repoFullName: string;
@@ -9,19 +10,55 @@ export function upsertPullRequest(input: {
   url: string;
   authorGithub: string;
   state?: string;
+  isDraft?: boolean;
+  requestedReviewers?: string[];
+  mergedAt?: string | null;
 }): PullRequest {
-  const existing = db.prepare('SELECT * FROM pull_requests WHERE repo_full_name = ? AND pr_number = ?')
-    .get(input.repoFullName, input.prNumber) as PullRequest | undefined;
+  const repoFullName = normalizeRepositoryFullName(input.repoFullName);
+  const existing = db.prepare('SELECT * FROM pull_requests WHERE repo_full_name = ? COLLATE NOCASE AND pr_number = ?')
+    .get(repoFullName, input.prNumber) as PullRequest | undefined;
 
   if (existing) {
-    db.prepare(`UPDATE pull_requests SET title = ?, url = ?, author_github = ?, state = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-      .run(input.title, input.url, input.authorGithub, input.state ?? 'open', existing.id);
+    const requestedReviewers = input.requestedReviewers === undefined
+      ? existing.requested_reviewers_json
+      : JSON.stringify(input.requestedReviewers);
+    db.prepare(`
+      UPDATE pull_requests
+      SET repo_full_name = ?, title = ?, url = ?, author_github = ?, state = ?, is_draft = ?,
+          requested_reviewers_json = ?, merged_at = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(
+      repoFullName,
+      input.title,
+      input.url,
+      input.authorGithub,
+      input.state ?? 'open',
+      input.isDraft === undefined ? existing.is_draft : Number(input.isDraft),
+      requestedReviewers,
+      input.mergedAt === undefined ? existing.merged_at : input.mergedAt,
+      existing.id
+    );
     return db.prepare('SELECT * FROM pull_requests WHERE id = ?').get(existing.id) as PullRequest;
   }
 
   const id = nanoid();
-  db.prepare(`INSERT INTO pull_requests (id, repo_full_name, pr_number, title, url, author_github, state) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, input.repoFullName, input.prNumber, input.title, input.url, input.authorGithub, input.state ?? 'open');
+  db.prepare(`
+    INSERT INTO pull_requests (
+      id, repo_full_name, pr_number, title, url, author_github, state, is_draft,
+      requested_reviewers_json, merged_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    repoFullName,
+    input.prNumber,
+    input.title,
+    input.url,
+    input.authorGithub,
+    input.state ?? 'open',
+    Number(input.isDraft ?? false),
+    JSON.stringify(input.requestedReviewers ?? []),
+    input.mergedAt ?? null
+  );
   return db.prepare('SELECT * FROM pull_requests WHERE id = ?').get(id) as PullRequest;
 }
 
@@ -72,11 +109,57 @@ export function setSlackTs(assignmentId: string, ts: string) {
   db.prepare('UPDATE review_assignments SET slack_ts = ? WHERE id = ?').run(ts, assignmentId);
 }
 
-export function markPrClosed(repoFullName: string, prNumber: number) {
-  const pr = db.prepare('SELECT * FROM pull_requests WHERE repo_full_name = ? AND pr_number = ?').get(repoFullName, prNumber) as PullRequest | undefined;
-  if (!pr) return;
-  db.prepare(`UPDATE pull_requests SET state = 'closed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(pr.id);
-  db.prepare(`UPDATE review_assignments SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE pr_id = ? AND status != 'completed'`).run(pr.id);
+export function getPullRequest(repoFullName: string, prNumber: number): PullRequest | undefined {
+  const normalizedRepository = normalizeRepositoryFullName(repoFullName);
+  return db.prepare('SELECT * FROM pull_requests WHERE repo_full_name = ? COLLATE NOCASE AND pr_number = ?')
+    .get(normalizedRepository, prNumber) as PullRequest | undefined;
+}
+
+export function markPullRequestFinal(
+  repoFullName: string,
+  prNumber: number,
+  status: 'closed' | 'merged',
+  mergedAt: string | null = null
+): PullRequest | undefined {
+  const pr = getPullRequest(repoFullName, prNumber);
+  if (!pr) return undefined;
+
+  const finalize = db.transaction(() => {
+    db.prepare(`
+      UPDATE pull_requests
+      SET state = ?, is_draft = 0, merged_at = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(status, mergedAt, pr.id);
+    db.prepare(`
+      UPDATE review_assignments
+      SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+      WHERE pr_id = ? AND status != 'completed'
+    `).run(pr.id);
+  });
+  finalize();
+  return db.prepare('SELECT * FROM pull_requests WHERE id = ?').get(pr.id) as PullRequest;
+}
+
+export function markPrClosed(repoFullName: string, prNumber: number): PullRequest | undefined {
+  return markPullRequestFinal(repoFullName, prNumber, 'closed');
+}
+
+export function listOpenPullRequestsForRepository(repoFullName: string): PullRequest[] {
+  const normalizedRepository = normalizeRepositoryFullName(repoFullName);
+  return db.prepare(`
+    SELECT * FROM pull_requests
+    WHERE repo_full_name = ? COLLATE NOCASE AND state = 'open'
+    ORDER BY pr_number ASC
+  `).all(normalizedRepository) as PullRequest[];
+}
+
+export function getRequestedReviewers(pr: PullRequest): string[] {
+  try {
+    const parsed: unknown = JSON.parse(pr.requested_reviewers_json);
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 

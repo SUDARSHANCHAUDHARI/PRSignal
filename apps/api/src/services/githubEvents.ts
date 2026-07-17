@@ -12,6 +12,46 @@ interface PullRequestPayload {
   } | null;
 }
 
+export type PullRequestChannelStatus = 'open' | 'draft' | 'closed' | 'merged';
+export type ChannelFeedDecision = {
+  kind: 'ensure' | 'update' | 'none';
+  status: PullRequestChannelStatus;
+};
+
+export function resolvePullRequestState(input: {
+  action: string;
+  isDraft: boolean;
+  merged: boolean;
+}): PullRequestChannelStatus {
+  if (input.action === 'closed') return input.merged ? 'merged' : 'closed';
+  return input.isDraft ? 'draft' : 'open';
+}
+
+export function decideChannelFeedAction(input: {
+  action: string;
+  isDraft: boolean;
+  merged: boolean;
+  notifyDrafts: boolean;
+  hasNotification: boolean;
+}): ChannelFeedDecision {
+  const status = resolvePullRequestState(input);
+
+  if (input.action === 'closed') {
+    return { kind: input.hasNotification ? 'update' : 'none', status };
+  }
+  if (input.action === 'converted_to_draft') {
+    return { kind: input.hasNotification ? 'update' : 'none', status: 'draft' };
+  }
+  if (['reopened', 'ready_for_review'].includes(input.action) && input.hasNotification) {
+    return { kind: 'update', status };
+  }
+  if (['opened', 'reopened', 'ready_for_review'].includes(input.action)) {
+    const shouldNotify = !input.isDraft || input.notifyDrafts;
+    return { kind: shouldNotify ? 'ensure' : 'none', status };
+  }
+  return { kind: 'none', status };
+}
+
 /**
  * Collect the set of reviewer logins implied by a pull_request event, de-duplicated.
  *
