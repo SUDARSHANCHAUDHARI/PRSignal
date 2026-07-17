@@ -36,10 +36,14 @@ You add these in `.env`:
 
 ```env
 GITHUB_WEBHOOK_SECRET=
+GITHUB_TOKEN=
 SLACK_BOT_TOKEN=
 SLACK_SIGNING_SECRET=
 JWT_SECRET=
+ADMIN_API_TOKEN=
 ```
+
+`GITHUB_TOKEN` is optional for webhook-only operation and required for manual or scheduled repository reconciliation. Use a fine-grained, read-only token limited to the selected repositories.
 
 ## Recommended checks
 
