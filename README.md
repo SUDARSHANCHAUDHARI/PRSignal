@@ -8,6 +8,23 @@ PRSignal is a single-instance pull-request notification service built with Expre
 
 > **Status:** Implementation and automated verification are complete for the watchlist/channel-feed feature. Live GitHub-to-Slack validation still requires real credentials and a reachable deployment.
 
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Features](#features)
+- [Setup](#setup)
+- [Slack configuration](#slack-configuration)
+- [GitHub configuration](#github-configuration)
+- [Repository admin API](#repository-admin-api)
+- [Webhook behavior](#webhook-behavior)
+- [Reconciliation behavior](#reconciliation-behavior)
+- [Daily digest](#daily-digest)
+- [Deployment](#deployment)
+- [Verification](#verification)
+- [Manual end-to-end smoke test](#manual-end-to-end-smoke-test)
+- [Known limitations](#known-limitations)
+- [About](#about)
+
 ## Architecture
 
 PRSignal uses a hybrid event model:
@@ -234,6 +251,28 @@ This check is credential-gated and has not been run automatically:
 - Single-instance SQLite and in-memory locking are not suitable for horizontal scaling.
 - Slack delivery and database persistence cannot be one atomic transaction; an abrupt process crash in the narrow interval after Slack accepts a message but before SQLite records it can require manual cleanup.
 
-## Author
+---
 
-Built by **Sudarshan Chaudhari** — SudarshanTechLabs.
+## About
+
+I'm Sudarshan Chaudhari, a Senior Quality Engineer, Test Automation specialist, and AI systems builder based in Bangkok, Thailand.
+
+I have 13+ years of experience in software quality engineering, working across SaaS, fintech, gaming, web, mobile, cloud, and digital signage platforms. My background combines hands-on test automation with QA leadership, test strategy, CI/CD, release quality, production investigation, and cross-platform validation.
+
+Alongside my professional QA career, I run [SudarshanTechLabs](https://sudarshantechlabs.com/), my independent engineering and product lab where I design, build, test, and ship software across Android, web, AI, cybersecurity, developer tooling, and cross-platform applications.
+
+### What I work on
+
+- ⚙️ **Quality Engineering & Test Automation** — Playwright, Selenium, Cypress, Appium, API testing, automation frameworks, end-to-end testing, CI/CD, release gates, GitHub Actions, risk-based testing, and production validation
+- 🤖 **AI Systems & Automation** — AI agents, multi-agent orchestration, MCP servers, AI-assisted QA, prompt tooling, developer workflows, automation systems, and Claude Code plugins
+- 📱 **Mobile & Cross-Platform Applications** — Android applications built with Kotlin and Jetpack Compose, Google Play releases, automated build and publishing pipelines, and cross-platform development spanning iOS, web, Windows, and macOS
+- 🌐 **Web Applications & Platforms** — Full-stack applications using Next.js, TypeScript, Firebase, Cloudflare, REST APIs, and modern web infrastructure
+- 🛠️ **Developer Tooling & CLI Engineering** — Rust, Python, TypeScript, CLI utilities, multi-repository tooling, build automation, release tooling, and engineering productivity systems
+- 🛡️ **Cybersecurity & Observability** — Threat detection, log analysis, security auditing, vulnerability assessment, monitoring, and security-focused developer tools
+- 📺 **Digital Signage & Device Platforms** — Content validation, playback testing, device compatibility, production investigation, monitoring, and QA across diverse hardware and operating-system environments
+
+My work sits at the intersection of quality engineering, automation, AI, and software development. I approach products with a QA mindset from the beginning: understanding failure modes, designing for testability, automating repetitive work, and building release confidence into the engineering process.
+
+Through SudarshanTechLabs, I also build products and tools from idea to production, covering architecture, development, testing, CI/CD, release automation, monitoring, and ongoing maintenance.
+
+🌐 [sudarshantechlabs.com](https://sudarshantechlabs.com/) · 💼 [LinkedIn](https://linkedin.com/in/sudarshan-chaudhari) · 🐙 [GitHub](https://github.com/SUDARSHANCHAUDHARI) · ✉️ [sunny.sudarshan@gmail.com](mailto:sunny.sudarshan@gmail.com)
