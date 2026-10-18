@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { config } from '../config.js';
-import { markAssignmentStatus, snoozeAssignment } from '../services/prs.js';
+import { getAssignmentWithPr, markAssignmentStatus, snoozeAssignment } from '../services/prs.js';
+import { getUserByGithub } from '../services/users.js';
 import { verifySlackSignature } from '../utils/crypto.js';
 
 export const slackRouter = Router();
@@ -15,6 +16,14 @@ slackRouter.post('/interactions', async (req: any, res) => {
     const assignmentId = action?.value;
 
     if (!action || !assignmentId) return res.status(400).send('Invalid payload');
+
+    // Only the assigned reviewer (matched via their stored Slack user id) may change an assignment.
+    const row = getAssignmentWithPr(assignmentId) as { reviewer_github: string } | undefined;
+    const reviewer = row ? getUserByGithub(row.reviewer_github) : undefined;
+    const slackUserId = payload.user?.id;
+    if (!slackUserId || !reviewer?.slack_user_id || reviewer.slack_user_id !== slackUserId) {
+      return res.json({ response_type: 'ephemeral', replace_original: false, text: 'That is not your assignment.' });
+    }
 
     if (action.action_id === 'ack_assignment') {
       markAssignmentStatus(assignmentId, 'acknowledged');
