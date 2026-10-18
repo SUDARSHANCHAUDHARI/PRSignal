@@ -43,3 +43,6 @@ dist/
 graphify-out/
 
 CLAUDE_TASKS.md
+
+# repoguard scan output
+repoguard-results/
